@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3D Apparel Mockup Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background-color: #0f172a; }
+    #canvas-container { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body class="text-slate-100 flex">
+
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Control Sidebar -->
+  <div class="absolute top-4 left-4 w-80 bg-slate-900/90 backdrop-blur-md p-5 rounded-xl border border-slate-800 shadow-2xl space-y-4">
+    <h2 class="text-lg font-bold tracking-wide text-white">Apparel Studio</h2>
+    
+    <!-- Base Color Picker -->
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase">Fabric Color</label>
+      <input type="color" id="color-picker" value="#222222" class="w-full h-10 rounded cursor-pointer mt-1 bg-transparent border-0" />
+    </div>
+
+    <!-- Fabric Texture Selector -->
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase">Fabric Type</label>
+      <select id="fabric-select" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none">
+        <option value="cotton">Cotton (Fine Weave)</option>
+        <option value="fleece">Fleece (Soft Pile)</option>
+      </select>
+    </div>
+
+    <!-- Custom Graphic File Uploader -->
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase">Custom Graphic</label>
+      <input type="file" id="graphic-upload" accept="image/*" class="w-full mt-1 text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer" />
+    </div>
+
+    <!-- Placement & Size Controls -->
+    <div class="space-y-2 border-t border-slate-800 pt-3">
+      <label class="text-xs font-semibold text-slate-400 uppercase">Graphic Scale</label>
+      <input type="range" id="graphic-scale" min="0.2" max="2" step="0.05" value="1" class="w-full accent-blue-500" />
+      
+      <label class="text-xs font-semibold text-slate-400 uppercase">Graphic Y-Offset</label>
+      <input type="range" id="graphic-offset-y" min="-0.5" max="0.5" step="0.02" value="0" class="w-full accent-blue-500" />
+    </div>
+
+    <!-- Snapshot Export Button -->
+    <button id="export-btn" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm transition-colors shadow-lg">
+      Export Render (PNG)
+    </button>
+  </div>
+
+  <!-- Three.js Import Map for Modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
