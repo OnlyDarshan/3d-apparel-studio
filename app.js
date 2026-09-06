@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // --- Application State ---
 const state = {
-  color: '#222222',
+  color: '#334155',
   fabricType: 'cotton',
   graphicTexture: null,
   graphicScale: 1.0,
@@ -16,33 +16,42 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0f172a);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 0, 3.5);
+// Mobile viewport adjustment for camera distance
+const isMobile = window.innerWidth < 768;
+camera.position.set(0, isMobile ? 0.2 : 0, isMobile ? 4.2 : 3.2);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.toneMappingExposure = 1.1;
 container.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.dampingFactor = 0.05;
 controls.minDistance = 1.5;
 controls.maxDistance = 6;
+// Shift focus point slightly up on mobile to keep shirt visible above UI
+if (isMobile) controls.target.set(0, 0.2, 0);
 
-// --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+// --- Studio Lighting Setup ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
-keyLight.position.set(3, 4, 3);
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+keyLight.position.set(2, 4, 3);
 scene.add(keyLight);
 
-const fillLight = new THREE.DirectionalLight(0x88bbff, 0.6);
-fillLight.position.set(-3, -1, -2);
+const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.8);
+fillLight.position.set(-3, 0, -2);
 scene.add(fillLight);
 
-// --- Procedural Texture Generators ---
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+rimLight.position.set(0, -4, -3);
+scene.add(rimLight);
+
+// --- Procedural Normal Map Generator ---
 function createProceduralFabricNormalMap({ type = 'cotton', size = 512, scale = 40 }) {
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -60,7 +69,7 @@ function createProceduralFabricNormalMap({ type = 'cotton', size = 512, scale = 
       if (type === 'cotton') {
         dx = Math.cos(u) * Math.sin(v) * 0.7;
         dy = Math.sin(u) * Math.cos(v) * 0.7;
-      } else { // fleece
+      } else {
         const noise = (Math.random() - 0.5) * 0.6;
         dx = (Math.sin(u * 0.4) + noise) * 0.5;
         dy = (Math.cos(v * 0.4) + noise) * 0.5;
@@ -86,12 +95,12 @@ function createProceduralFabricNormalMap({ type = 'cotton', size = 512, scale = 
 }
 
 const cottonNormal = createProceduralFabricNormalMap({ type: 'cotton', scale: 60 });
-cottonNormal.repeat.set(3, 3);
+cottonNormal.repeat.set(4, 4);
 
 const fleeceNormal = createProceduralFabricNormalMap({ type: 'fleece', scale: 20 });
 fleeceNormal.repeat.set(2, 2);
 
-// --- Material Setup ---
+// --- Material ---
 const garmentMaterial = new THREE.MeshPhysicalMaterial({
   color: new THREE.Color(state.color),
   roughness: 0.85,
@@ -100,10 +109,11 @@ const garmentMaterial = new THREE.MeshPhysicalMaterial({
   normalScale: new THREE.Vector2(0.5, 0.5),
   sheen: 0.5,
   sheenRoughness: 0.8,
-  sheenColor: new THREE.Color(0xffffff)
+  sheenColor: new THREE.Color(0xffffff),
+  side: THREE.DoubleSide
 });
 
-// --- Dynamic Graphic Compositing Canvas ---
+// --- Dynamic Graphic Texture Canvas ---
 const compositeCanvas = document.createElement('canvas');
 compositeCanvas.width = 1024;
 compositeCanvas.height = 1024;
@@ -130,23 +140,83 @@ function updateCompositeTexture() {
   textureMap.needsUpdate = true;
 }
 
-// --- Procedural Garment Geometry (T-Shirt Body) ---
+// --- Realistic Organic T-Shirt Mesh Construction ---
+function createRealisticShirtGeometry() {
+  const geo = new THREE.CylinderGeometry(0.52, 0.56, 1.4, 64, 64, true);
+  const pos = geo.attributes.position;
+
+  // Deform vertex data to model natural cloth flow, waist taper, and folds
+  for (let i = 0; i < pos.count; i++) {
+    let x = pos.getX(i);
+    let y = pos.getY(i);
+    let z = pos.getZ(i);
+
+    // Anatomical chest profile & back curve
+    const angle = Math.atan2(z, x);
+    if (z > 0) {
+      z += Math.sin((y + 0.7) * Math.PI * 0.8) * 0.08; // Chest bulge
+    } else {
+      z -= Math.sin((y + 0.7) * Math.PI * 0.5) * 0.03; // Upper back arch
+    }
+
+    // Realistic draped cloth wrinkles and ripples
+    const foldWave1 = Math.sin(y * 8 + angle * 4) * 0.015;
+    const foldWave2 = Math.cos(y * 12 - angle * 2) * 0.01;
+    
+    x += Math.cos(angle) * (foldWave1 + foldWave2);
+    z += Math.sin(angle) * (foldWave1 + foldWave2);
+
+    // Bottom hem flare
+    if (y < -0.5) {
+      const hemFactor = Math.abs(y + 0.5) / 0.2;
+      x *= 1 + hemFactor * 0.05;
+      z *= 1 + hemFactor * 0.05;
+    }
+
+    pos.setXYZ(i, x, y, z);
+  }
+
+  geo.computeVertexNormals();
+  return geo;
+}
+
 const garmentGroup = new THREE.Group();
 
-const torsoGeo = new THREE.CylinderGeometry(0.5, 0.52, 1.2, 32, 1, true);
-const torso = new THREE.Mesh(torsoGeo, garmentMaterial);
-garmentGroup.add(torso);
+// Torso Body
+const shirtBody = new THREE.Mesh(createRealisticShirtGeometry(), garmentMaterial);
+garmentGroup.add(shirtBody);
 
-const sleeveLeftGeo = new THREE.CylinderGeometry(0.18, 0.2, 0.45, 16);
-const sleeveLeft = new THREE.Mesh(sleeveLeftGeo, garmentMaterial);
-sleeveLeft.position.set(-0.62, 0.35, 0);
-sleeveLeft.rotation.z = Math.PI / 3.5;
+// Left Sleeve
+const sleeveGeo = new THREE.CylinderGeometry(0.2, 0.24, 0.5, 32, 16, true);
+const sleevePos = sleeveGeo.attributes.position;
+for (let i = 0; i < sleevePos.count; i++) {
+  let x = sleevePos.getX(i);
+  let y = sleevePos.getY(i);
+  let z = sleevePos.getZ(i);
+  // Natural arm drape sagging effect
+  z += Math.sin((y + 0.25) * Math.PI) * 0.03;
+  sleevePos.setXYZ(i, x, y, z);
+}
+sleeveGeo.computeVertexNormals();
+
+const sleeveLeft = new THREE.Mesh(sleeveGeo, garmentMaterial);
+sleeveLeft.position.set(-0.62, 0.4, 0);
+sleeveLeft.rotation.z = Math.PI / 3.2;
 garmentGroup.add(sleeveLeft);
 
+// Right Sleeve
 const sleeveRight = sleeveLeft.clone();
 sleeveRight.position.x = 0.62;
-sleeveRight.rotation.z = -Math.PI / 3.5;
+sleeveRight.rotation.z = -Math.PI / 3.2;
 garmentGroup.add(sleeveRight);
+
+// Crew Neck Collar Rim
+const collarGeo = new THREE.TorusGeometry(0.38, 0.035, 16, 64);
+collarGeo.scale(1, 0.4, 1.1);
+const collar = new THREE.Mesh(collarGeo, garmentMaterial);
+collar.position.set(0, 0.68, 0);
+collar.rotation.x = Math.PI / 2;
+garmentGroup.add(collar);
 
 scene.add(garmentGroup);
 
@@ -208,7 +278,9 @@ document.getElementById('export-btn').addEventListener('click', () => {
 });
 
 window.addEventListener('resize', () => {
+  const mobile = window.innerWidth < 768;
   camera.aspect = window.innerWidth / window.innerHeight;
+  camera.position.z = mobile ? 4.2 : 3.2;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
