@@ -6,58 +6,66 @@
   <title>3D Apparel Mockup Studio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #0f172a; touch-action: none; }
+    body { margin: 0; overflow: hidden; background-color: #0d1117; touch-action: none; font-family: system-ui, -apple-system, sans-serif; }
     #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-    .ui-panel { z-index: 10; }
+    
+    /* 2D Pattern Canvas Overlay */
+    #texture-editor-modal {
+      display: none;
+      z-index: 50;
+    }
+    #texture-editor-modal.active {
+      display: flex;
+    }
   </style>
 </head>
-<body class="text-slate-100">
+<body class="text-white select-none">
 
-  <!-- 3D Canvas Container -->
+  <!-- 3D Canvas -->
   <div id="canvas-container"></div>
 
-  <!-- Responsive Mobile & Desktop Control Panel -->
-  <div class="ui-panel absolute bottom-0 left-0 right-0 md:top-4 md:left-4 md:right-auto md:bottom-auto w-full md:w-80 bg-slate-900/95 backdrop-blur-md p-5 rounded-t-2xl md:rounded-xl border-t md:border border-slate-800 shadow-2xl space-y-3 max-h-[45vh] md:max-h-none overflow-y-auto">
-    <div class="flex justify-between items-center">
-      <h2 class="text-base md:text-lg font-bold text-white">Apparel Studio</h2>
-      <span class="text-xs text-slate-400 md:hidden">Swipe down to view shirt</span>
-    </div>
-    
-    <!-- Customization Controls -->
-    <div class="grid grid-cols-2 md:grid-cols-1 gap-3">
-      <div>
-        <label class="text-[10px] font-semibold text-slate-400 uppercase">Fabric Color</label>
-        <input type="color" id="color-picker" value="#334155" class="w-full h-8 rounded cursor-pointer bg-transparent border-0" />
-      </div>
-
-      <div>
-        <label class="text-[10px] font-semibold text-slate-400 uppercase">Fabric Type</label>
-        <select id="fabric-select" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white focus:outline-none">
-          <option value="cotton">Cotton (Fine Weave)</option>
-          <option value="fleece">Fleece (Soft Pile)</option>
-        </select>
-      </div>
+  <!-- Top Floating Toolbar -->
+  <div class="absolute top-4 left-4 right-4 z-20 flex justify-between items-center pointer-events-none">
+    <div class="flex items-center space-x-2 bg-slate-900/80 backdrop-blur-md p-1.5 rounded-full border border-slate-800 pointer-events-auto">
+      <label for="graphic-upload" class="p-2.5 bg-blue-600 hover:bg-blue-500 rounded-full cursor-pointer transition flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+      </label>
+      <input type="file" id="graphic-upload" accept="image/*" class="hidden" />
+      <button id="open-editor-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium rounded-full border border-slate-700">2D Pattern Mode</button>
     </div>
 
-    <div>
-      <label class="text-[10px] font-semibold text-slate-400 uppercase">Custom Graphic</label>
-      <input type="file" id="graphic-upload" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-blue-600 file:text-white cursor-pointer" />
-    </div>
-
-    <div class="space-y-1.5 border-t border-slate-800 pt-2">
-      <label class="text-[10px] font-semibold text-slate-400 uppercase">Graphic Scale</label>
-      <input type="range" id="graphic-scale" min="0.2" max="2" step="0.05" value="1" class="w-full accent-blue-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
-      
-      <label class="text-[10px] font-semibold text-slate-400 uppercase">Graphic Y-Offset</label>
-      <input type="range" id="graphic-offset-y" min="-0.5" max="0.5" step="0.02" value="0" class="w-full accent-blue-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
-    </div>
-
-    <button id="export-btn" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs transition-colors shadow-lg mt-2">
-      Export Render (PNG)
-    </button>
+    <button id="export-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-semibold rounded-full shadow-lg pointer-events-auto">Publish</button>
   </div>
 
-  <!-- Three.js Import Map -->
+  <!-- Bottom Mode Toggle Switch (3D / 2D) -->
+  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+    <div class="flex bg-slate-900/90 backdrop-blur-md p-1 rounded-full border border-slate-800 text-xs font-semibold">
+      <button id="mode-3d-btn" class="px-5 py-1.5 rounded-full bg-blue-600 text-white">3D</button>
+      <button id="mode-2d-btn" class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white">2D</button>
+    </div>
+  </div>
+
+  <!-- 2D Texture Layout Editor Modal -->
+  <div id="texture-editor-modal" class="fixed inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="font-bold text-sm">2D Graphic Placement</h3>
+        <button id="close-editor-btn" class="text-xs text-blue-400 font-semibold">Done</button>
+      </div>
+      <div class="p-4 flex-1 flex items-center justify-center bg-slate-950 overflow-hidden">
+        <canvas id="2d-editor-canvas" width="1024" height="1024" class="w-full max-w-[320px] h-auto border border-slate-800 rounded-lg bg-slate-900/50"></canvas>
+      </div>
+      <div class="p-4 border-t border-slate-800 space-y-3">
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-slate-400">Shirt Color</span>
+          <input type="color" id="color-picker" value="#ffffff" class="w-8 h-8 rounded border-0 bg-transparent cursor-pointer" />
+        </div>
+        <button id="clear-graphics-btn" class="w-full py-2 text-xs bg-red-950/40 hover:bg-red-900/50 text-red-400 rounded-lg border border-red-900/30">Clear Graphics</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three.js Module Map -->
   <script type="importmap">
     {
       "imports": {
